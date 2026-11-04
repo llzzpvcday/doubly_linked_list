@@ -25,19 +25,27 @@ void __dllist_check(dllist_t *dllist) {
   ssize_t i = 0;
 
   do {
-    mark[i] += 1;
-
-    if (mark[i] > 1)
+    if (mark[i] > 0)
       ret_status(DLLIST_ELEM_LOOP_DETECTED);
+
+    mark[i] += 1;
     
     ssize_t next = get_next(i);
     if (__dllist_check_index(dllist, next)) {
-      if (get_prev(next) != i) {
+      if (get_prev(next) == -1){
         ret_status(DLLIST_ONE_WAY_LINK_DETECTED);
+      }
+      if (__dllist_check_index(dllist, get_prev(next))) {
+        if (get_prev(next) != i)
+        ret_status(DLLIST_ONE_WAY_LINK_DETECTED);
+      } else {
+        ret_status(DLLIST_INVALID_LINK_DETECTED);
       }
     } else {
       ret_status(DLLIST_INVALID_LINK_DETECTED);
     }     
+
+    i = next;
 
   } while (i != 0);
 
@@ -49,6 +57,12 @@ void __dllist_check(dllist_t *dllist) {
       ret_status(DLLIST_NOT_FREE_ELEM_IN_FREE_LIST);
     }
     mark[i] -= 1;
+
+    ssize_t next = get_next(i);
+    if (!__dllist_check_index(dllist, next)) {
+      ret_status(DLLIST_INVALID_LINK_DETECTED);
+    }
+    i = next;
   }
 
   for (ssize_t j = 0; j < dllist->capacity; j += 1) {
@@ -71,6 +85,48 @@ void __dllist_status_handler(dllist_t *dllist) {
   if (ret == 0)
     return;
 
+  printf("Status: %d\n", dllist->status);
+  switch (dllist->status) {
+
+  case DLLIST_OK:
+    $debug("Dllist check ok");
+    break;
+  case DLLIST_NOT_INITIALIZED:
+    $error("Operation with not initialized dllist (exiting program)");
+    exit(DLLIST_NOT_INITIALIZED);
+  case DLLIST_BUF_ALLOC_FAILED:
+    $error("Allocation of buffer for dllist failed (exiting program)");
+    exit(DLLIST_BUF_ALLOC_FAILED);
+  case DLLIST_INVALID_INDEX_OPERATION:
+    $error("Attempt to perform operation with invalid index (exiting program)");
+    exit(DLLIST_INVALID_INDEX_OPERATION);
+  case DLLIST_ATTEMPT_TO_REMOVE_ZERO:
+    $error("Attempt to remove element from empty list (exiting program)");
+    exit(DLLIST_ATTEMPT_TO_REMOVE_ZERO);
+  case DLLIST_ELEM_LOOP_DETECTED:
+    $error("Dllist checker detected a loop (exiting program)");
+    exit(DLLIST_ELEM_LOOP_DETECTED);
+  case DLLIST_FREE_LOOP_DETECTED:
+    $error("Dllist checker detected a loop of free elements (exiting program)");
+    exit(DLLIST_FREE_LOOP_DETECTED);
+  case DLLIST_NOT_LINKED_NODE_DETECTED:
+    $error("Dllist checker found a node that is not connected to any other one. (exiting program)");
+    exit(DLLIST_NOT_LINKED_NODE_DETECTED);
+  case DLLIST_ONE_WAY_LINK_DETECTED:
+    $error("Dllist checker found a one way link (exiting program)");
+    exit(DLLIST_ONE_WAY_LINK_DETECTED);
+  case DLLIST_INVALID_LINK_DETECTED:
+    $error("Dllist checker found a link with invalid index (exiting program)");
+    exit(DLLIST_INVALID_LINK_DETECTED);
+  case DLLIST_NOT_FREE_ELEM_IN_FREE_LIST:
+    $error("Dllist checker found a not free node in free list (exiting program)");
+    exit(DLLIST_NOT_FREE_ELEM_IN_FREE_LIST);
+  case DLLIST_SIZE_GREATER_CAPACITY:
+    $error("Dllist size is greater than capacity (exiting program)");
+    exit(DLLIST_SIZE_GREATER_CAPACITY);
+    break;
+
+  }
   // TODO: 
 }
 
@@ -184,13 +240,15 @@ void dllist_dump(dllist_t *dllist, FILE *out) {
   fprintf(child_in, "}");
   fclose(child_in);
 
-  char buf[64] = "";
-  while (fgets(buf, sizeof(buf), child_out) != NULL) {
-    if (buf[sizeof(buf) - 2] == '\n') 
-      buf[sizeof(buf) - 2] = ' ';
-    fprintf(out, "%s", buf);
+  char c = '\0';
+  while ((c = fgetc(child_out)) != EOF) {
+    if (c == '\n') {
+      fputc(' ', out);
+    } else {
+      fputc(c, out);
+    }
   }
-  fputs("", out);
+  fputc('\n', out);
 }
 
 void dllist_init(dllist_t *dllist, ssize_t base_capacity) {
@@ -217,6 +275,7 @@ void dllist_init(dllist_t *dllist, ssize_t base_capacity) {
   get_next(0) = 0;
   get_prev(0) = 0;
 
+  $debug("Dllist initialized");
   DLLIST_CHECK;
   $DLLIST_DEBUG_DUMP("Dump after <font color='blue'>INIT</font>");
 }
@@ -280,7 +339,7 @@ void dllist_insert(dllist_t *dllist, ssize_t index, dllist_elem_t elem) {
   dllist->buf[free].data = elem;
 
   DLLIST_CHECK;
-  $DLLIST_DEBUG_DUMP("<h1>Dump after <font color='green'>INSERT</font> index: %ld\n</h1>", index);
+  $DLLIST_DEBUG_DUMP("Dump after <font color='green'>INSERT</font> index: %ld", index);
 }
 
 void dllist_remove(dllist_t *dllist, ssize_t index) {
@@ -302,7 +361,7 @@ void dllist_remove(dllist_t *dllist, ssize_t index) {
   get_next(prev) = next;
 
   DLLIST_CHECK;
-  $DLLIST_DEBUG_DUMP("Dump after <font color='red'>REMOVE</font> index: %ld\n", index);
+  $DLLIST_DEBUG_DUMP("Dump after <font color='red'>REMOVE</font> index: %ld", index);
 }
 
 ssize_t dllist_get_head(dllist_t *dllist) {
