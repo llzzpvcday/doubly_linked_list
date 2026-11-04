@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#define DLLIST_DEBUG
+// #define DLLIST_DEBUG
 
 #ifdef DLLIST_DEBUG
 
@@ -12,7 +12,7 @@ FILE *__dllist_get_logging_file() {
     char log_filename_buf[64] = "dllist_log.html";
     time_t now   = time(NULL);
     struct tm *t = localtime(&now);
-    strftime(log_filename_buf, sizeof(log_filename_buf), "%H:%M-%d-%m-%Y-log.html", t);
+    // strftime(log_filename_buf, sizeof(log_filename_buf), "%H:%M-%d-%m-%Y-log.html", t);
     log_file = fopen(log_filename_buf, "w");
     setvbuf(log_file, NULL, _IONBF, 0);
     // fputs("<pre><meta name    = \"color-scheme\" content = \"light dark\" /> ", log_file);
@@ -40,5 +40,8 @@ FILE *__dllist_get_logging_file() {
   }
 
 #else
+
+#define $log(...)
+#define $DLLIST_DEBUG_DUMP(...)
 
 #endif
