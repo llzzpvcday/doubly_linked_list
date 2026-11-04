@@ -1,0 +1,271 @@
+#include "dlinked_list.h"
+#include "dllist_logging.c"
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdint.h>
+
+void __dllist_check(dllist_t *dllist) {
+  // TODO:
+  // uint8_t mask[dllist->capacity] = {};
+  // ssize_t i = 0;
+  // do {
+  //   mask[i] += 1;
+  //   if (mask[i] > 1) {
+  //     dllist->status = DLLIST_ELEM_LOOP_DETECTED;
+  //     return;
+  //   }
+  // }
+  // return DLLIST_OK;
+}
+
+void __dllist_status_handler(dllist_t *dllist) {
+  int ret = -1;
+  if (dllist->status_handler != NULL) {
+    ret = dllist->status_handler(dllist);
+  }
+
+  if (ret == 0)
+    return;
+
+  // TODO: 
+}
+
+bool __dllist_check_index(dllist_t *dllist, ssize_t index) {
+  return ((ssize_t)index < dllist->capacity) && (index >= 0);
+}
+
+#define DLLIST_CHECK() {__dllist_check(dllist); __dllist_status_handler(dllist);}
+#define DLLIST_SET_STATUS(status__) {dllist->status = status__; __dllist_status_handler(dllist);}
+
+#define DLLIST_CHECK_OPERATION_INDEX(index__) {if (!__dllist_check_index(dllist, index__) || (get_next(index) == -1 || get_prev(index) == -1)) DLLIST_SET_STATUS(DLLIST_INVALID_INDEX_OPERATION);}
+
+// Source - https://stackoverflow.com/a/64359731
+// Posted by Hank
+// Retrieved 2026-10-31, License - CC BY-SA 4.0
+// Like popen(), but returns two FILE*: child's stdin and stdout, respectively.
+void popen2(const char *__command, FILE **stdin, FILE **stdout) {
+  // pipes[0]: parent writes, child reads (child's stdin)
+  // pipes[1]: child writes, parent reads (child's stdout)
+  int pipes[2][2];
+
+  pipe(pipes[0]);
+  pipe(pipes[1]);
+
+  if (fork() > 0) {
+    // parent
+    close(pipes[0][0]);
+    close(pipes[1][1]);
+
+    *stdin = fdopen(pipes[0][1], "w");
+    *stdout = fdopen(pipes[1][0], "r");
+    return;
+  } else {
+    // child
+    close(pipes[0][1]);
+    close(pipes[1][0]);
+
+    dup2(pipes[0][0], STDIN_FILENO);
+    dup2(pipes[1][1], STDOUT_FILENO);
+
+    execl("/bin/sh", "/bin/sh", "-c", __command, NULL);
+
+    exit(1);
+  }
+}
+
+void dllist_dump(dllist_t *dllist, FILE *out) {
+  FILE *child_in = {};
+  FILE *child_out = {};
+  popen2("/usr/bin/dot -Tsvg", &child_in, &child_out);
+
+  // fprintf(child_in, "digraph G{\nrankdir=TB;\n");
+  fprintf(child_in, "digraph G{\nrankdir=LR;\n");
+  fprintf(child_in, "bgcolor=\"transparent\";\n");
+  fprintf(child_in, "graph[splines=ortho];\n");
+  fprintf(child_in, "graph[fontname=\"Helvetica, Arial, sans-serif\"];\n");
+  // fprintf(child_in, "node[style=\"filled\" fillcolor=\"white\"];\n");
+  fprintf(child_in, "node[style=\"filled,rounded\"; fontname=\"Helvetica, Arial, sans-serif\"; fontcolor=\"#1E293B\"; penwidth=\"2.0\"];\n");
+;
+  fprintf(child_in, "edge[color=\"#64748B\"; penwidth=\"1.5\";];\n");
+  // fprintf(child_in, "concentrate=true\n");
+  for (ssize_t i = 0; i < dllist->capacity; i += 1) {
+
+    // if (i != dllist->capacity - 1) {
+    //   fprintf(child_in, "node%ld -> node%ld [weight=10000000 style=\"invis\"]", i, i + 1);
+    // }
+
+#define print_node(color1, color2)                                             \
+  {                                                                            \
+    fprintf(child_in,                                                          \
+        "node%1$ld[shape=\"Mrecord\", color=\"" color1 "\", "                  \
+        "style=\"filled\", fillcolor=\"" color2 "\", "                         \
+        "label=\" index=%1$ld | { prev=%2$ld | next=%3$ld } | data=%4$d "      \
+        "\"];\n",                                                              \
+        i, cur.prev, cur.next, cur.data);                                      \
+  }
+
+    dllist_node cur = dllist->buf[i];
+    if (i == 0) {
+      print_node("#4F46E5", "#EEF2FF");
+    } else if (__dllist_check_index(dllist, cur.next) && __dllist_check_index(dllist, cur.prev)) {
+      print_node("#059669", "#ECFDF5");
+    } else if (__dllist_check_index(dllist, cur.next) && cur.prev == -1) {
+      print_node("#D97706", "#FFFBEB");
+    } else {
+      print_node("#E11D48", "#FFF1F2");
+    }
+
+    if (!__dllist_check_index(dllist, cur.next)) {
+      fprintf(child_in, "node%ld -> node%ld[color=\"#F43F5E\", style=\"bold,dashed\"];", i, cur.next);
+    } else if (cur.prev == -1) {
+       fprintf(child_in, "node%ld -> node%ld[color=\"#F59E0B\", style=\"dashed\"];", i, cur.next);
+    } else if (get_prev(cur.next) == i) {
+      fprintf(child_in, "node%ld -> node%ld[dir=\"both\"];", i, cur.next);
+    } else {
+      fprintf(child_in, "node%ld -> node%ld[color=\"#F43F5E\", style=\"bold,dashed\"];", i, cur.next);
+    }
+
+    if (cur.prev != -1) {
+      if (!__dllist_check_index(dllist, cur.prev) || get_next(cur.prev) != i) {
+        fprintf(child_in, "node%ld -> node%ld[color=\"#F43F5E\", style=\"bold,dashed\"];", i, cur.prev);
+      }
+    }
+
+  }
+
+  fprintf(child_in, "free -> node%ld;", dllist->free);
+  fprintf(child_in, "head -> node%ld;", get_next(0));
+  fprintf(child_in, "tail -> node%ld;", get_prev(0));
+
+  fprintf(child_in, "}");
+  fclose(child_in);
+
+  char buf[64] = "";
+  while (fgets(buf, sizeof(buf), child_out) != NULL) {
+    if (buf[sizeof(buf) - 2] == '\n') 
+      buf[sizeof(buf) - 2] = ' ';
+    fprintf(out, "%s", buf);
+  }
+  fputs("", out);
+}
+
+void dllist_init(dllist_t *dllist, ssize_t base_capacity) {
+  if (base_capacity < DLLIST_MIN_CAP)
+    base_capacity = DLLIST_MIN_CAP;
+
+  base_capacity += 1;
+
+  dllist->status   = DLLIST_OK;
+  dllist->size     = 0;
+  dllist->capacity = base_capacity;
+  dllist->buf      = (dllist_node *)calloc(base_capacity, sizeof(dllist_node));
+
+  // for (dllist_node *iter = dllist->buf + 1; iter < dllist->buf + base_capacity; iter += 1) {
+  for (ssize_t i = 1; i < dllist->capacity - 1; i += 1) {
+    get_next(i) = i + 1;
+    get_prev(i) = -1;
+  }
+  get_next(dllist->capacity - 1) = 0;
+  get_prev(dllist->capacity - 1) = -1;
+
+  dllist->free = 1;
+
+  get_next(0) = 0;
+  get_prev(0) = 0;
+
+  $DLLIST_DEBUG_DUMP("Dump after <font color='blue'>INIT</font>");
+}
+
+void dllist_destruct(dllist_t *dllist) {
+  free(dllist->buf);
+  dllist->buf      = NULL;
+  dllist->size     = 0;
+  dllist->capacity = 0;
+  dllist->status   = DLLIST_NOT_INITIALIZED;
+}
+
+void __dllist_resize(dllist_t *dllist) {
+  dllist->buf = (dllist_node *)realloc(dllist->buf, dllist->capacity * sizeof(dllist_node) * 2 );
+  if (dllist->buf == NULL)
+    DLLIST_SET_STATUS(DLLIST_BUF_ALLOC_FAILED);
+
+  for (ssize_t i = dllist->capacity; i < dllist->capacity * 2; i += 1) {
+    get_next(i) = i + 1;
+    get_prev(i) = -1;
+    dllist->buf[i].data = 0;
+  }
+
+
+  get_next(dllist->capacity * 2 - 1) = dllist->free;
+  get_prev(dllist->capacity * 2 - 1) = -1;
+
+  dllist->free = dllist->capacity;
+
+  dllist->capacity *= 2;
+
+  $DLLIST_DEBUG_DUMP("Dump after <font color='yellow'>RESIZE</font>");
+}
+
+ssize_t __dllist_get_free(dllist_t *dllist) {
+  if (dllist->free == 0) 
+    __dllist_resize(dllist);
+  
+  
+  ssize_t ret = dllist->free;
+  dllist->free = get_next(ret); 
+
+  return ret;
+}
+
+void dllist_insert(dllist_t *dllist, ssize_t index, dllist_elem_t elem) {
+
+  DLLIST_CHECK_OPERATION_INDEX(index);
+  
+  ssize_t next = get_next(index);
+  ssize_t free  = __dllist_get_free(dllist);
+
+  get_prev(free) = index;
+  get_next(free) = next;
+  get_prev(next) = free;
+  get_next(index) = free;
+
+  dllist->buf[free].data = elem;
+  $DLLIST_DEBUG_DUMP("<h1>Dump after <font color='green'>INSERT</font> index: %ld\n</h1>", index);
+}
+
+void dllist_remove(dllist_t *dllist, ssize_t index) {
+   
+  DLLIST_CHECK_OPERATION_INDEX(index);
+  if (index == 0) 
+    DLLIST_SET_STATUS(DLLIST_ATTEMPT_TO_REMOVE_ZERO);
+
+  ssize_t next = get_next(index);
+  ssize_t prev = get_prev(index);
+  get_prev(index) = -1;
+  get_next(index) = dllist->free;
+  dllist->buf[index].data = 0;
+
+  dllist->free = index;
+
+  get_prev(next) = prev;
+  get_next(prev) = next;
+
+  $DLLIST_DEBUG_DUMP("Dump after <font color='red'>REMOVE</font> index: %ld\n", index);
+}
+
+ssize_t dllist_get_head(dllist_t *dllist) {
+  return get_next(0);
+}
+
+ssize_t dllist_get_tail(dllist_t *dllist){
+  return get_prev(0);
+}
+
+dllist_elem_t dllist_get(dllist_t *dllist, ssize_t index) {
+
+  DLLIST_CHECK_OPERATION_INDEX(index);
+
+  return dllist->buf[index].data;
+}
