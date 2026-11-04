@@ -85,7 +85,6 @@ void __dllist_status_handler(dllist_t *dllist) {
   if (ret == 0)
     return;
 
-  printf("Status: %d\n", dllist->status);
   switch (dllist->status) {
 
   case DLLIST_OK:
@@ -127,7 +126,6 @@ void __dllist_status_handler(dllist_t *dllist) {
     break;
 
   }
-  // TODO: 
 }
 
 bool __dllist_check_index(dllist_t *dllist, ssize_t index) {
@@ -178,21 +176,15 @@ void dllist_dump(dllist_t *dllist, FILE *out) {
   FILE *child_out = {};
   __popen2("/usr/bin/dot -Tsvg", &child_in, &child_out);
 
-  // fprintf(child_in, "digraph G{\nrankdir=TB;\n");
   fprintf(child_in, "digraph G{\nrankdir=LR;\n");
   fprintf(child_in, "bgcolor=\"transparent\";\n");
   fprintf(child_in, "graph[splines=ortho];\n");
   fprintf(child_in, "graph[fontname=\"Helvetica, Arial, sans-serif\"];\n");
-  // fprintf(child_in, "node[style=\"filled\" fillcolor=\"white\"];\n");
   fprintf(child_in, "node[style=\"filled,rounded\"; fontname=\"Helvetica, Arial, sans-serif\"; fontcolor=\"#1E293B\"; penwidth=\"2.0\"];\n");
 ;
   fprintf(child_in, "edge[color=\"#64748B\"; penwidth=\"1.5\";];\n");
-  // fprintf(child_in, "concentrate=true\n");
   for (ssize_t i = 0; i < dllist->capacity; i += 1) {
 
-    // if (i != dllist->capacity - 1) {
-    //   fprintf(child_in, "node%ld -> node%ld [weight=10000000 style=\"invis\"]", i, i + 1);
-    // }
 
 #define print_node(color1, color2)                                             \
   {                                                                            \
@@ -262,7 +254,6 @@ void dllist_init(dllist_t *dllist, ssize_t base_capacity) {
   dllist->capacity = base_capacity;
   dllist->buf      = (dllist_node *)calloc((size_t)base_capacity, sizeof(dllist_node));
 
-  // for (dllist_node *iter = dllist->buf + 1; iter < dllist->buf + base_capacity; iter += 1) {
   for (ssize_t i = 1; i < dllist->capacity - 1; i += 1) {
     get_next(i) = i + 1;
     get_prev(i) = -1;
@@ -277,7 +268,7 @@ void dllist_init(dllist_t *dllist, ssize_t base_capacity) {
 
   $debug("Dllist initialized");
   DLLIST_CHECK;
-  $DLLIST_DEBUG_DUMP("Dump after <font color='blue'>INIT</font>");
+  $DLLIST_DEBUG_DUMP("Dump after <font color='gray'>INIT</font>");
 }
 
 void dllist_destruct(dllist_t *dllist) {
@@ -290,6 +281,7 @@ void dllist_destruct(dllist_t *dllist) {
 
 void __dllist_resize(dllist_t *dllist) {
   DLLIST_CHECK;
+
   dllist->buf = (dllist_node *)realloc(dllist->buf, (size_t)dllist->capacity * sizeof(dllist_node) * 2 );
   if (dllist->buf == NULL)
     DLLIST_SET_STATUS(DLLIST_BUF_ALLOC_FAILED);
@@ -309,7 +301,7 @@ void __dllist_resize(dllist_t *dllist) {
   dllist->capacity *= 2;
 
   DLLIST_CHECK;
-  $DLLIST_DEBUG_DUMP("Dump after <font color='yellow'>RESIZE</font>");
+  $DLLIST_DEBUG_DUMP("Dump after <font color='orange'>RESIZE</font>");
 }
 
 ssize_t __dllist_get_free(dllist_t *dllist) {
@@ -339,7 +331,7 @@ void dllist_insert(dllist_t *dllist, ssize_t index, dllist_elem_t elem) {
   dllist->buf[free].data = elem;
 
   DLLIST_CHECK;
-  $DLLIST_DEBUG_DUMP("Dump after <font color='green'>INSERT</font> index: %ld", index);
+  $DLLIST_DEBUG_DUMP("Dump after <font color='blue'>INSERT</font> index: %ld", index);
 }
 
 void dllist_remove(dllist_t *dllist, ssize_t index) {
@@ -361,7 +353,7 @@ void dllist_remove(dllist_t *dllist, ssize_t index) {
   get_next(prev) = next;
 
   DLLIST_CHECK;
-  $DLLIST_DEBUG_DUMP("Dump after <font color='red'>REMOVE</font> index: %ld", index);
+  $DLLIST_DEBUG_DUMP("Dump after <font color='deeppink'>REMOVE</font> index: %ld", index);
 }
 
 ssize_t dllist_get_head(dllist_t *dllist) {
