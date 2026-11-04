@@ -3,6 +3,8 @@
 
 #define DLLIST_LOGGING
 #define DLLIST_DEBUG
+// #define DLLIST_LOGFILE_TIMESTAMP
+// #define DLLIST_LOG_DARK_THEME
 
 // ------------------LOGGING-MACRO-------------------------------------------
 
@@ -19,12 +21,19 @@ FILE *__dllist_get_logging_file() {
   
   if (log_file == NULL) {
     char log_filename_buf[64] = "dllist_log.html";
-    // get_cur_time_str(log_filename_buf, 64, "%H:%M-%d-%m-%Y-log.html");
+
+    #ifdef DLLIST_LOGFILE_TIMESTAMP
+    get_cur_time_str(log_filename_buf, 64, "%H:%M-%d-%m-%Y-log.html");
+    #endif
+    
     log_file = fopen(log_filename_buf, "w");
     setvbuf(log_file, NULL, _IONBF, 0);
-    // fputs("<pre><meta name    = \"color-scheme\" content = \"light dark\" /> ", log_file);
+
+    #ifdef DLLIST_LOG_DARK_THEME
+    fputs("<pre><meta name    = \"color-scheme\" content = \"light dark\" /> ", log_file); 
+    #endif
+    
     fputs("<pre>\n", log_file);
-    // fputs("<style> svg { width: 50px } </style>", log_file);
     fputs("<style> h1 { margin: 0px } </style>", log_file);
   }
 
@@ -92,5 +101,6 @@ FILE *__dllist_get_logging_file() {
 #else 
 
 #define $DLLIST_DEBUG_DUMP(...)
+#define $debug(...)
 
 #endif

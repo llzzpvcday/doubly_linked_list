@@ -124,7 +124,8 @@ void __dllist_status_handler(dllist_t *dllist) {
     $error("Dllist size is greater than capacity (exiting program)");
     exit(DLLIST_SIZE_GREATER_CAPACITY);
     break;
-
+  default:
+    break;
   }
 }
 
@@ -232,7 +233,7 @@ void dllist_dump(dllist_t *dllist, FILE *out) {
   fprintf(child_in, "}");
   fclose(child_in);
 
-  char c = '\0';
+  int c = '\0';
   while ((c = fgetc(child_out)) != EOF) {
     if (c == '\n') {
       fputc(' ', out);
