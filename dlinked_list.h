@@ -33,16 +33,18 @@ typedef struct dllist_t {
   int (*status_handler)(struct dllist_t *dllist); // If handler returns zero,
                                                   // default handler will not be executed
   ssize_t free;
+  ssize_t dllist_id;
 } dllist_t;
 
-void dllist_init(dllist_t *dllist, ssize_t base_capacity);
+ssize_t dllist_init(dllist_t *dllist, ssize_t base_capacity);
 void dllist_destruct(dllist_t *dllist);
-void dllist_insert(dllist_t *dllist, ssize_t index, dllist_elem_t elem);
+ssize_t dllist_insert(dllist_t *dllist, ssize_t index, dllist_elem_t elem);
 void dllist_remove(dllist_t *dllist, ssize_t index);
 ssize_t dllist_get_head(dllist_t *dllist);
 ssize_t dllist_get_tail(dllist_t *dllist);
 dllist_elem_t dllist_get(dllist_t *dllist, ssize_t index);
 void dllist_dump(dllist_t *dllist, FILE *out);
-
-#define get_next(index__) dllist->buf[index__].next
-#define get_prev(index__) dllist->buf[index__].prev
+ssize_t dllist_get_next(dllist_t *dllist, ssize_t index);
+ssize_t dllist_get_prev(dllist_t *dllist, ssize_t index);
+ssize_t dllist_insert_before(dllist_t *dllist, ssize_t index, dllist_elem_t elem);
+void dllist_set_status_handler(dllist_t *dllist, int (*status_handler)(struct dllist_t *dllist));

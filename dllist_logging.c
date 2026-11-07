@@ -18,7 +18,7 @@ void get_cur_time_str(char *buf, size_t size, const char *format) {
 
 FILE *__dllist_get_logging_file() {
   static FILE *log_file = NULL;
-  
+
   if (log_file == NULL) {
     char log_filename_buf[64] = "dllist_log.html";
 
@@ -30,7 +30,7 @@ FILE *__dllist_get_logging_file() {
     setvbuf(log_file, NULL, _IONBF, 0);
 
     #ifdef DLLIST_LOG_DARK_THEME
-    fputs("<pre><meta name    = \"color-scheme\" content = \"light dark\" /> ", log_file); 
+    fputs("<pre><meta name    = \"color-scheme\" content = \"light dark\" /> ", log_file);
     #endif
     
     fputs("<pre>\n", log_file);
@@ -53,8 +53,10 @@ FILE *__dllist_get_logging_file() {
     char timestamp_buf[32] = "";                                               \
     get_cur_time_str(                                                          \
         timestamp_buf, sizeof(timestamp_buf), "%d-%m-%Y %H:%M:%S");            \
-    fprintf(                                                                   \
-        log_file, "<h1><font color=\"red\">%s - [ERROR] - ", timestamp_buf);   \
+    fprintf(log_file,                                                          \
+        "<h1><font color=\"red\">%s - [ERROR] - [%3ld] - ",                     \
+        timestamp_buf,                                                         \
+        dllist->dllist_id);                                                    \
     fprintf(log_file, __VA_ARGS__);                                            \
     fprintf(log_file, "</font></h1>\n");                                       \
     dllist_dump(dllist, log_file);                                             \
@@ -71,7 +73,7 @@ FILE *__dllist_get_logging_file() {
 
 // ------------------DEBUG-MACRO---------------------------------------------
 
-#if defined (DLLIST_DEBUG) && defined (DLLIST_LOGGING)  
+#if defined(DLLIST_DEBUG) && defined(DLLIST_LOGGING)
 
 #define $DLLIST_DEBUG_DUMP(...)                                                \
   {                                                                            \
@@ -91,11 +93,13 @@ FILE *__dllist_get_logging_file() {
     char timestamp_buf[32] = "";                                               \
     get_cur_time_str(                                                          \
         timestamp_buf, sizeof(timestamp_buf), "%d-%m-%Y %H:%M:%S");            \
-    fprintf(                                                                   \
-        log_file, "<h1><font color=\"green\">%s - [DEBUG] - ", timestamp_buf); \
+    fprintf(log_file,                                                          \
+        "<h1><font color=\"green\">%s - [DEBUG] - [%3ld] - ",                 \
+        timestamp_buf,                                                         \
+        dllist->dllist_id);                                                    \
     fprintf(log_file, __VA_ARGS__);                                            \
     fprintf(log_file, "</font></h1>\n");                                       \
-    fflush(log_file);\
+    fflush(log_file);                                                          \
   }
 
 #else 

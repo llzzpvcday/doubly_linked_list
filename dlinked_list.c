@@ -13,6 +13,9 @@ void __dllist_resize(dllist_t *dllist);
 ssize_t __dllist_get_free(dllist_t *dllist);
 void __popen2(const char *__command, FILE **stdin, FILE **stdout);
 
+#define __next(index__) dllist->buf[index__].next
+#define __prev(index__) dllist->buf[index__].prev
+
 void __dllist_check(dllist_t *dllist) {
   #define ret_status(status__) {dllist->status = status__; free(mark); return;}
 
@@ -30,13 +33,13 @@ void __dllist_check(dllist_t *dllist) {
 
     mark[i] += 1;
     
-    ssize_t next = get_next(i);
+    ssize_t next = __next(i);
     if (__dllist_check_index(dllist, next)) {
-      if (get_prev(next) == -1){
+      if (__prev(next) == -1){
         ret_status(DLLIST_ONE_WAY_LINK_DETECTED);
       }
-      if (__dllist_check_index(dllist, get_prev(next))) {
-        if (get_prev(next) != i)
+      if (__dllist_check_index(dllist, __prev(next))) {
+        if (__prev(next) != i)
         ret_status(DLLIST_ONE_WAY_LINK_DETECTED);
       } else {
         ret_status(DLLIST_INVALID_LINK_DETECTED);
@@ -58,7 +61,7 @@ void __dllist_check(dllist_t *dllist) {
     }
     mark[i] -= 1;
 
-    ssize_t next = get_next(i);
+    ssize_t next = __next(i);
     if (!__dllist_check_index(dllist, next)) {
       ret_status(DLLIST_INVALID_LINK_DETECTED);
     }
@@ -100,7 +103,7 @@ void __dllist_status_handler(dllist_t *dllist) {
     $error("Attempt to perform operation with invalid index (exiting program)");
     exit(DLLIST_INVALID_INDEX_OPERATION);
   case DLLIST_ATTEMPT_TO_REMOVE_ZERO:
-    $error("Attempt to remove element from empty list (exiting program)");
+    $error("Attempt to remove sentinel element (exiting program)");
     exit(DLLIST_ATTEMPT_TO_REMOVE_ZERO);
   case DLLIST_ELEM_LOOP_DETECTED:
     $error("Dllist checker detected a loop (exiting program)");
@@ -136,7 +139,7 @@ bool __dllist_check_index(dllist_t *dllist, ssize_t index) {
 #define DLLIST_CHECK {__dllist_check(dllist); __dllist_status_handler(dllist);}
 #define DLLIST_SET_STATUS(status__) {dllist->status = status__; __dllist_status_handler(dllist);}
 
-#define DLLIST_CHECK_OPERATION_INDEX(index__) {if (!__dllist_check_index(dllist, index__) || (get_next(index) == -1 || get_prev(index) == -1)) DLLIST_SET_STATUS(DLLIST_INVALID_INDEX_OPERATION);}
+#define DLLIST_CHECK_OPERATION_INDEX(index__) {if (!__dllist_check_index(dllist, index__) || (__next(index) == -1 || __prev(index) == -1)) DLLIST_SET_STATUS(DLLIST_INVALID_INDEX_OPERATION);}
 
 // Source - https://stackoverflow.com/a/64359731
 // Posted by Hank
@@ -212,14 +215,14 @@ void dllist_dump(dllist_t *dllist, FILE *out) {
       fprintf(child_in, "node%ld -> node%ld[color=\"#F43F5E\", style=\"bold,dashed\"];", i, cur.next);
     } else if (cur.prev == -1) {
        fprintf(child_in, "node%ld -> node%ld[color=\"#F59E0B\", style=\"dashed\"];", i, cur.next);
-    } else if (get_prev(cur.next) == i) {
+    } else if (__prev(cur.next) == i) {
       fprintf(child_in, "node%ld -> node%ld[dir=\"both\"];", i, cur.next);
     } else {
       fprintf(child_in, "node%ld -> node%ld[color=\"#F43F5E\", style=\"bold,dashed\"];", i, cur.next);
     }
 
     if (cur.prev != -1) {
-      if (!__dllist_check_index(dllist, cur.prev) || get_next(cur.prev) != i) {
+      if (!__dllist_check_index(dllist, cur.prev) || __next(cur.prev) != i) {
         fprintf(child_in, "node%ld -> node%ld[color=\"#F43F5E\", style=\"bold,dashed\"];", i, cur.prev);
       }
     }
@@ -227,8 +230,8 @@ void dllist_dump(dllist_t *dllist, FILE *out) {
   }
 
   fprintf(child_in, "free -> node%ld;", dllist->free);
-  fprintf(child_in, "head -> node%ld;", get_next(0));
-  fprintf(child_in, "tail -> node%ld;", get_prev(0));
+  fprintf(child_in, "head -> node%ld;", __next(0));
+  fprintf(child_in, "tail -> node%ld;", __prev(0));
 
   fprintf(child_in, "}");
   fclose(child_in);
@@ -244,32 +247,35 @@ void dllist_dump(dllist_t *dllist, FILE *out) {
   fputc('\n', out);
 }
 
-void dllist_init(dllist_t *dllist, ssize_t base_capacity) {
+ssize_t dllist_init(dllist_t *dllist, ssize_t base_capacity) {
+  static ssize_t next_id = 0;
   if (base_capacity < DLLIST_MIN_CAP)
     base_capacity = DLLIST_MIN_CAP;
 
   base_capacity += 1;
 
-  dllist->status   = DLLIST_OK;
-  dllist->size     = 0;
-  dllist->capacity = base_capacity;
-  dllist->buf      = (dllist_node *)calloc((size_t)base_capacity, sizeof(dllist_node));
+  dllist->status    = DLLIST_OK;
+  dllist->size      = 0;
+  dllist->capacity  = base_capacity;
+  dllist->buf       = (dllist_node *)calloc((size_t)base_capacity, sizeof(dllist_node));
+  dllist->dllist_id = next_id;
 
   for (ssize_t i = 1; i < dllist->capacity - 1; i += 1) {
-    get_next(i) = i + 1;
-    get_prev(i) = -1;
+    __next(i) = i + 1;
+    __prev(i) = -1;
   }
-  get_next(dllist->capacity - 1) = 0;
-  get_prev(dllist->capacity - 1) = -1;
+  __next(dllist->capacity - 1) = 0;
+  __prev(dllist->capacity - 1) = -1;
 
   dllist->free = 1;
 
-  get_next(0) = 0;
-  get_prev(0) = 0;
+  __next(0) = 0;
+  __prev(0) = 0;
 
   $debug("Dllist initialized");
   DLLIST_CHECK;
   $DLLIST_DEBUG_DUMP("Dump after <font color='gray'>INIT</font>");
+  return next_id++;
 }
 
 void dllist_destruct(dllist_t *dllist) {
@@ -288,14 +294,14 @@ void __dllist_resize(dllist_t *dllist) {
     DLLIST_SET_STATUS(DLLIST_BUF_ALLOC_FAILED);
 
   for (ssize_t i = dllist->capacity; i < dllist->capacity * 2; i += 1) {
-    get_next(i) = i + 1;
-    get_prev(i) = -1;
+    __next(i) = i + 1;
+    __prev(i) = -1;
     dllist->buf[i].data = 0;
   }
 
 
-  get_next(dllist->capacity * 2 - 1) = dllist->free;
-  get_prev(dllist->capacity * 2 - 1) = -1;
+  __next(dllist->capacity * 2 - 1) = dllist->free;
+  __prev(dllist->capacity * 2 - 1) = -1;
 
   dllist->free = dllist->capacity;
 
@@ -311,28 +317,30 @@ ssize_t __dllist_get_free(dllist_t *dllist) {
   
   
   ssize_t ret = dllist->free;
-  dllist->free = get_next(ret); 
+  dllist->free = __next(ret); 
 
   return ret;
 }
 
-void dllist_insert(dllist_t *dllist, ssize_t index, dllist_elem_t elem) {
+ssize_t dllist_insert(dllist_t *dllist, ssize_t index, dllist_elem_t elem) {
   DLLIST_CHECK;
 
   DLLIST_CHECK_OPERATION_INDEX(index);
   
-  ssize_t next = get_next(index);
+  ssize_t next = __next(index);
   ssize_t free  = __dllist_get_free(dllist);
 
-  get_prev(free) = index;
-  get_next(free) = next;
-  get_prev(next) = free;
-  get_next(index) = free;
+  __prev(free) = index;
+  __next(free) = next;
+  __prev(next) = free;
+  __next(index) = free;
 
   dllist->buf[free].data = elem;
 
   DLLIST_CHECK;
   $DLLIST_DEBUG_DUMP("Dump after <font color='blue'>INSERT</font> index: %ld", index);
+
+  return free;
 }
 
 void dllist_remove(dllist_t *dllist, ssize_t index) {
@@ -342,16 +350,16 @@ void dllist_remove(dllist_t *dllist, ssize_t index) {
   if (index == 0) 
     DLLIST_SET_STATUS(DLLIST_ATTEMPT_TO_REMOVE_ZERO);
 
-  ssize_t next = get_next(index);
-  ssize_t prev = get_prev(index);
-  get_prev(index) = -1;
-  get_next(index) = dllist->free;
+  ssize_t next = __next(index);
+  ssize_t prev = __prev(index);
+  __prev(index) = -1;
+  __next(index) = dllist->free;
   dllist->buf[index].data = 0;
 
   dllist->free = index;
 
-  get_prev(next) = prev;
-  get_next(prev) = next;
+  __prev(next) = prev;
+  __next(prev) = next;
 
   DLLIST_CHECK;
   $DLLIST_DEBUG_DUMP("Dump after <font color='deeppink'>REMOVE</font> index: %ld", index);
@@ -359,12 +367,12 @@ void dllist_remove(dllist_t *dllist, ssize_t index) {
 
 ssize_t dllist_get_head(dllist_t *dllist) {
   DLLIST_CHECK;
-  return get_next(0);
+  return __next(0);
 }
 
 ssize_t dllist_get_tail(dllist_t *dllist){
   DLLIST_CHECK;
-  return get_prev(0);
+  return __prev(0);
 }
 
 dllist_elem_t dllist_get(dllist_t *dllist, ssize_t index) {
@@ -373,4 +381,21 @@ dllist_elem_t dllist_get(dllist_t *dllist, ssize_t index) {
   DLLIST_CHECK_OPERATION_INDEX(index);
 
   return dllist->buf[index].data;
+}
+
+ssize_t dllist_get_next(dllist_t *dllist, ssize_t index) {
+  return __next(index);
+}
+
+ssize_t dllist_get_prev(dllist_t *dllist, ssize_t index) {
+  return __prev(index);
+}
+
+ssize_t dllist_insert_before(dllist_t *dllist, ssize_t index, dllist_elem_t elem) {
+  return dllist_insert(dllist, __prev(index), elem);
+}
+
+
+void dllist_set_status_handler(dllist_t *dllist, int (*status_handler)(struct dllist_t *dllist)) {
+  dllist->status_handler = status_handler;
 }
