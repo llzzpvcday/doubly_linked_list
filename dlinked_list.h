@@ -3,6 +3,8 @@
 
 #define dllist_elem_t  int
 #define DLLIST_MIN_CAP 6
+#define DLLIST_CHECK_ENABLED
+#define DLLIST_INDEX_CHECK_ENABLED
 
 typedef enum dllist_status {
   DLLIST_OK                         =   1,

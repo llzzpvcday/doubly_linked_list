@@ -136,10 +136,19 @@ bool __dllist_check_index(dllist_t *dllist, ssize_t index) {
   return ((ssize_t)index < dllist->capacity) && (index >= 0);
 }
 
+#ifdef DLLIST_CHECK_ENABLED
 #define DLLIST_CHECK {__dllist_check(dllist); __dllist_status_handler(dllist);}
+#else 
+#define DLLIST_CHECK 
+#endif
+
 #define DLLIST_SET_STATUS(status__) {dllist->status = status__; __dllist_status_handler(dllist);}
 
+#ifdef DLLIST_INDEX_CHECK_ENABLED
 #define DLLIST_CHECK_OPERATION_INDEX(index__) {if (!__dllist_check_index(dllist, index__) || (__next(index) == -1 || __prev(index) == -1)) DLLIST_SET_STATUS(DLLIST_INVALID_INDEX_OPERATION);}
+#else 
+#define DLLIST_CHECK_OPERATION_INDEX(index__)
+#endif
 
 // Source - https://stackoverflow.com/a/64359731
 // Posted by Hank
@@ -384,10 +393,14 @@ dllist_elem_t dllist_get(dllist_t *dllist, ssize_t index) {
 }
 
 ssize_t dllist_get_next(dllist_t *dllist, ssize_t index) {
+  DLLIST_CHECK;
+  DLLIST_CHECK_OPERATION_INDEX(index);
   return __next(index);
 }
 
 ssize_t dllist_get_prev(dllist_t *dllist, ssize_t index) {
+  DLLIST_CHECK;
+  DLLIST_CHECK_OPERATION_INDEX(index);
   return __prev(index);
 }
 
