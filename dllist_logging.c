@@ -71,7 +71,7 @@ FILE *__dllist_get_logging_file() {
 
 // ------------------DEBUG-MACRO---------------------------------------------
 
-#ifdef DLLIST_DEBUG
+#if defined (DLLIST_DEBUG) && defined (DLLIST_LOGGING)  
 
 #define $DLLIST_DEBUG_DUMP(...)                                                \
   {                                                                            \
