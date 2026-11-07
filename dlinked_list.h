@@ -50,3 +50,4 @@ ssize_t dllist_get_next(dllist_t *dllist, ssize_t index);
 ssize_t dllist_get_prev(dllist_t *dllist, ssize_t index);
 ssize_t dllist_insert_before(dllist_t *dllist, ssize_t index, dllist_elem_t elem);
 void dllist_set_status_handler(dllist_t *dllist, int (*status_handler)(struct dllist_t *dllist));
+void dllist_dump_to_html_table(dllist_t *dllist, FILE *out);

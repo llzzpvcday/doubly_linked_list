@@ -184,6 +184,28 @@ void __popen2(const char *__command, FILE **stdin, FILE **stdout) {
   }
 }
 
+void dllist_dump_to_html_table(dllist_t *dllist, FILE *out) {
+
+#ifdef DLLIST_TABLE_DUMP
+  fprintf(out, "<table>");
+#define __print_table_row(__property)                                          \
+  {                                                                            \
+    fprintf(out, "<tr><td>" #__property "</td>");                              \
+    for (ssize_t i = 0; i < dllist->capacity; i += 1) {                        \
+      fprintf(out, "<td>%ld</td>", __property);                                \
+    }                                                                          \
+    fprintf(out, "</tr>");                                                     \
+  }
+
+  __print_table_row(i);
+  __print_table_row(dllist->buf[i].next);
+  __print_table_row(dllist->buf[i].prev);
+  __print_table_row(dllist->buf[i].data);
+  fprintf(out, "</table>");
+
+#endif
+}
+
 void dllist_dump(dllist_t *dllist, FILE *out) {
   FILE *child_in = {};
   FILE *child_out = {};
@@ -194,7 +216,7 @@ void dllist_dump(dllist_t *dllist, FILE *out) {
   fprintf(child_in, "graph[splines=ortho];\n");
   fprintf(child_in, "graph[fontname=\"Helvetica, Arial, sans-serif\"];\n");
   fprintf(child_in, "node[style=\"filled,rounded\"; fontname=\"Helvetica, Arial, sans-serif\"; fontcolor=\"#1E293B\"; penwidth=\"2.0\"];\n");
-;
+
   fprintf(child_in, "edge[color=\"#64748B\"; penwidth=\"1.5\";];\n");
   for (ssize_t i = 0; i < dllist->capacity; i += 1) {
 
